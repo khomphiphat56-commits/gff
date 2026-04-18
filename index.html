@@ -3,43 +3,45 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>System Check</title>
+<title>System</title>
 <style>
 body{
   margin:0;
   background:black;
   color:#00ff88;
   font-family: monospace;
-  overflow:hidden;
-  font-size:20px; /* ตัวใหญ่ขึ้น */
+  font-size:22px;
 }
 
-/* Matrix */
-canvas{
+/* ปุ่มเริ่ม */
+#startBtn{
   position:fixed;
-  top:0;
-  left:0;
-  z-index:0;
+  top:40%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  padding:15px 25px;
+  font-size:22px;
+  background:#00ff88;
+  border:none;
+  cursor:pointer;
 }
 
-/* Terminal */
+/* terminal */
 #terminal{
-  position:relative;
-  z-index:1;
+  display:none;
   padding:20px;
   height:70vh;
   overflow-y:auto;
   white-space:pre-line;
 }
 
-/* Progress */
+/* bar */
 .bar{
-  position:relative;
-  z-index:1;
+  display:none;
   width:90%;
-  height:20px; /* ใหญ่ขึ้น */
+  height:20px;
   border:2px solid #00ff88;
-  margin:15px auto;
+  margin:10px auto;
 }
 .progress{
   height:100%;
@@ -47,153 +49,133 @@ canvas{
   background:#00ff88;
 }
 
-/* Flicker */
-body::after{
-  content:"";
+/* overlay */
+#overlay{
   position:fixed;
-  width:100%;
-  height:100%;
-  background:rgba(0,255,0,0.04);
-  animation:flicker 0.2s infinite;
-  pointer-events:none;
-}
-@keyframes flicker{
-  0%{opacity:0.03;}
-  50%{opacity:0.07;}
-  100%{opacity:0.03;}
-}
-
-/* Shake */
-.shake{
-  animation:shake 0.1s infinite;
-}
-@keyframes shake{
-  0%{transform:translate(2px,2px);}
-  50%{transform:translate(-2px,-2px);}
-  100%{transform:translate(2px,-2px);}
+  top:0;left:0;
+  width:100%;height:100%;
+  background:black;
+  color:#00ff88;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:30px;
+  opacity:0;
+  transition:0.5s;
 }
 </style>
 </head>
 <body>
 
-<canvas id="matrix"></canvas>
+<button id="startBtn" onclick="start()">เริ่มระบบ</button>
+
 <div id="terminal"></div>
 
 <div class="bar">
   <div class="progress" id="progress"></div>
 </div>
 
-<audio id="beep" src="beep.mp3"></audio>
-<audio id="type" src="type.mp3"></audio>
+<div id="overlay">กำลังรีสตาร์ทระบบ...</div>
 
 <script>
-// MATRIX
-const canvas=document.getElementById("matrix");
-const ctx=canvas.getContext("2d");
-canvas.height=window.innerHeight;
-canvas.width=window.innerWidth;
+// ====== แก้ข้อมูลตรงนี้ ======
+const profile = {
+  name: "ชื่อเพื่อน",
+  phone: "09x-xxx-xxxx",
+  email: "example@gmail.com",
+  facebook: "facebook.com/xxx",
+  nickname: "ฉายา",
+  hobby: "เล่นเกม / นอนดึก"
+};
+// ============================
 
-const letters="01";
-const fontSize=16;
-const columns=canvas.width/fontSize;
-const drops=Array(Math.floor(columns)).fill(1);
+const term=document.getElementById("terminal");
+const bar=document.querySelector(".bar");
+const progress=document.getElementById("progress");
 
-function draw(){
-  ctx.fillStyle="rgba(0,0,0,0.05)";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  ctx.fillStyle="#00ff88";
-  ctx.font=fontSize+"px monospace";
-
-  for(let i=0;i<drops.length;i++){
-    const text=letters[Math.floor(Math.random()*2)];
-    ctx.fillText(text,i*fontSize,drops[i]*fontSize);
-
-    if(drops[i]*fontSize>canvas.height && Math.random()>0.975)
-      drops[i]=0;
-
-    drops[i]++;
+function goFull(){
+  const el=document.documentElement;
+  if(el.requestFullscreen){
+    el.requestFullscreen();
+  }else if(el.webkitRequestFullscreen){
+    el.webkitRequestFullscreen();
   }
 }
-setInterval(draw,33);
 
-// TERMINAL
-const term=document.getElementById("terminal");
-const bar=document.getElementById("progress");
-const beep=document.getElementById("beep");
-const typeSound=document.getElementById("type");
+function start(){
+  goFull();
+  document.getElementById("startBtn").style.display="none";
+  term.style.display="block";
+  bar.style.display="block";
+  run();
+}
 
 function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
-function randomIP(){
-  return `${rand(10,255)}.${rand(0,255)}.${rand(0,255)}.${rand(1,254)}`;
-}
 
-const lines=[
-  "เริ่มต้นการตรวจสอบระบบ...",
-  "กำลังเชื่อมต่อเซิร์ฟเวอร์...",
-  "IP: "+randomIP(),
-  "กำลังตรวจสอบอุปกรณ์...",
-  navigator.userAgent,
-  "กำลังเข้าถึงหน่วยความจำ...",
-  "กำลังวิเคราะห์พฤติกรรมผู้ใช้...",
-  "กำลังประมวลผลข้อมูล...",
-  "กรุณารอสักครู่..."
-];
-
-let i=0, percent=0;
+let percent=0;
 
 function typeLine(text,cb){
-  let j=0;
+  let i=0;
   let inter=setInterval(()=>{
-    term.innerHTML+=text[j]||"";
-    j++;
-    typeSound.volume=0.1;
-    typeSound.play().catch(()=>{});
-    if(j>text.length){
+    term.innerHTML+=text[i]||"";
+    i++;
+    if(i>text.length){
       clearInterval(inter);
       term.innerHTML+="\n";
-      beep.volume=0.15;
-      beep.play().catch(()=>{});
       cb&&cb();
     }
-  },25); // ช้าลง
+  },25);
 }
 
-function run(){
-  if(i<lines.length){
-    typeLine(lines[i],()=>{
-      i++;
-      percent+=rand(5,10); // ช้าลงมาก
-      if(percent>100) percent=100;
-      bar.style.width=percent+"%";
+function addProgress(){
+  percent+=rand(3,6);
+  if(percent>100) percent=100;
+  progress.style.width=percent+"%";
+}
 
-      if(percent>85){
-        document.body.classList.add("shake");
-      }
+const steps=[
 
-      setTimeout(run,800); // ดีเลย์นานขึ้น
-    });
-  }else{
-    countdown(5);
+()=>typeLine("เริ่มต้นระบบ...",next),
+()=>typeLine("กำลังเชื่อมต่อเซิร์ฟเวอร์...",next),
+()=>typeLine("กำลังตรวจสอบอุปกรณ์...",next),
+
+()=>typeLine("=== ระดับ 1 ===",next),
+()=>typeLine("ชื่อ: "+profile.name,next),
+()=>typeLine("เบอร์: "+profile.phone,next),
+
+()=>typeLine("=== ระดับ 2 ===",next),
+()=>typeLine("อีเมล: "+profile.email,next),
+()=>typeLine("เฟซบุ๊ก: "+profile.facebook,next),
+
+()=>typeLine("=== ระดับ 3 ===",next),
+()=>typeLine("ชื่อเล่น: "+profile.nickname,next),
+()=>typeLine("พฤติกรรม: "+profile.hobby,next),
+
+()=>typeLine("กำลังสรุปผล...",next),
+
+()=>fakeRestart()
+
+];
+
+let i=0;
+
+function next(){
+  addProgress();
+  i++;
+  if(i<steps.length){
+    setTimeout(steps[i],800);
   }
 }
 
-function countdown(n){
-  if(n>0){
-    typeLine("กำลังสรุปผลใน "+n+"...",()=>{
-      setTimeout(()=>countdown(n-1),800);
-    });
-  }else{
-    document.body.classList.remove("shake");
-    typeLine("=== ผลลัพธ์ ===",()=>{
-      typeLine("พฤติกรรมที่ตรวจพบ: นอนดึก + เล่นเกมหนัก 😂",()=>{
-        typeLine(">> ล้อเล่นนะ ไม่ได้ทำอะไรจริง <<");
-      });
-    });
-  }
+function fakeRestart(){
+  const o=document.getElementById("overlay");
+  o.style.opacity=1;
+
+  setTimeout(()=>{
+    o.innerHTML="ระบบพร้อมใช้งาน\n(ล้อเล่นนะ 😂)";
+  },3000);
 }
 
-run();
 </script>
 
 </body>
