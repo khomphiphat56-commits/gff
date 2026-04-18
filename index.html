@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Access</title>
+<style>
+body{
+  margin:0;
+  background:black;
+  color:#00ff88;
+  font-family: monospace;
+  overflow:hidden;
+}
+
+/* Matrix */
+canvas{
+  position:fixed;
+  top:0;
+  left:0;
+  z-index:0;
+}
+
+/* Terminal */
+#terminal{
+  position:relative;
+  z-index:1;
+  padding:15px;
+  height:70vh;
+  overflow-y:auto;
+  white-space:pre-line;
+}
+
+/* Progress bar */
+.bar{
+  position:relative;
+  z-index:1;
+  width:90%;
+  height:15px;
+  border:1px solid #00ff88;
+  margin:10px auto;
+}
+.progress{
+  height:100%;
+  width:0%;
+  background:#00ff88;
+  transition:0.3s;
+}
+
+/* Flicker */
+body::after{
+  content:"";
+  position:fixed;
+  width:100%;
+  height:100%;
+  background:rgba(0,255,0,0.03);
+  animation:flicker 0.15s infinite;
+  pointer-events:none;
+}
+@keyframes flicker{
+  0%{opacity:0.02;}
+  50%{opacity:0.05;}
+  100%{opacity:0.02;}
+}
+</style>
+</head>
+<body>
+
+<canvas id="matrix"></canvas>
+<div id="terminal"></div>
+
+<div class="bar">
+  <div class="progress" id="progress"></div>
+</div>
+
+<audio id="beep" src="beep.mp3"></audio>
+
+<script>
+// ===== MATRIX =====
+const canvas = document.getElementById("matrix");
+const ctx = canvas.getContext("2d");
+canvas.height = window.innerHeight;
+canvas.width = window.innerWidth;
+
+const letters = "01";
+const fontSize = 14;
+const columns = canvas.width / fontSize;
+const drops = Array(Math.floor(columns)).fill(1);
+
+function draw(){
+  ctx.fillStyle="rgba(0,0,0,0.05)";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  ctx.fillStyle="#00ff88";
+  ctx.font=fontSize+"px monospace";
+
+  for(let i=0;i<drops.length;i++){
+    const text = letters[Math.floor(Math.random()*2)];
+    ctx.fillText(text,i*fontSize,drops[i]*fontSize);
+
+    if(drops[i]*fontSize > canvas.height && Math.random()>0.975)
+      drops[i]=0;
+
+    drops[i]++;
+  }
+}
+setInterval(draw,33);
+
+// ===== TERMINAL =====
+const term = document.getElementById("terminal");
+const bar = document.getElementById("progress");
+const beep = document.getElementById("beep");
+
+// fake data
+function randomIP(){
+  return `${rand(10,255)}.${rand(0,255)}.${rand(0,255)}.${rand(1,254)}`;
+}
+function rand(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+
+const device = navigator.userAgent;
+const ip = randomIP();
+
+const lines = [
+  "กำลังเชื่อมต่อเซิร์ฟเวอร์...",
+  "IP ที่ตรวจพบ: " + ip,
+  "ตรวจสอบอุปกรณ์...",
+  "ระบบ: " + device,
+  "เข้าถึงหน่วยความจำ...",
+  "วิเคราะห์พฤติกรรมผู้ใช้...",
+  "กำลังประมวลผลข้อมูล...",
+  "กำลังสรุปผล..."
+];
+
+let i=0;
+let percent=0;
+
+function typeLine(text, cb){
+  let j=0;
+  let interval = setInterval(()=>{
+    term.innerHTML += text[j] || "";
+    j++;
+    if(j>text.length){
+      clearInterval(interval);
+      term.innerHTML+="\n";
+      beep.volume=0.15;
+      beep.play().catch(()=>{});
+      cb && cb();
+    }
+  },20);
+}
+
+function run(){
+  if(i<lines.length){
+    typeLine(lines[i], ()=>{
+      i++;
+      percent += rand(8,15);
+      if(percent>100) percent=100;
+      bar.style.width = percent + "%";
+      setTimeout(run,400);
+    });
+  } else {
+    countdown(5);
+  }
+}
+
+function countdown(n){
+  if(n>0){
+    typeLine("กำลังสรุปผลใน " + n + "...", ()=>{
+      setTimeout(()=>countdown(n-1),500);
+    });
+  } else {
+    typeLine("=== ผลลัพธ์ ===", ()=>{
+      typeLine("พบข้อมูล: คนนี้ติดเกม + นอนดึก 😂", ()=>{
+        typeLine(">> ล้อเล่นนะ ไม่ได้แฮกจริง <<");
+      });
+    });
+  }
+}
+
+run();
+</script>
+
+</body>
+</html>
